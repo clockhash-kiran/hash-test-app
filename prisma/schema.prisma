@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(uuid()) // Ensure UUID format
+  name              String?
+  email             String    @unique
+  username          String    @unique
+  avatarUrl         String?
+  emailVerified     DateTime?
+  password          String? // Password is only for credentials-based login
+  provider          String? // e.g., "google", "github", "credentials"
+  providerAccountId String? // Provider-specific account ID (e.g., Google UID)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  accounts           Account[]           @relation("UserAccounts") // Define relation name
+  verificationTokens VerificationToken[] // Define the relation for verification tokens
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String // Match User.id type (String)
+  provider          String // e.g., "google", "github", "credentials"
+  providerAccountId String // Unique ID from provider
+  type              String // e.g., "oauth", "credentials"
+  access_token      String?
+  expires_at        Int?
+  refresh_token     String?
+  scope             String?
+  token_type        String?
+  id_token          String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, name: "UserAccounts")
+
+  @@unique([provider, providerAccountId]) // Ensure uniqueness
+}
+
+model VerificationToken {
+  id         String   @id @default(cuid())
+  token      String   @unique
+  identifier String
+  expires    DateTime
+
+  user User @relation(fields: [identifier], references: [email]) // Relation to User model, assuming identifier is email
+}
