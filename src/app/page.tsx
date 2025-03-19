@@ -1,13 +1,11 @@
-import { buttonVariants } from "@/components/ui/button";
-import Link from "next/link";
+"use client";
+
+import HeroSection from "./home/HeroSection";
 
 export default function Home() {
   return (
-    <> {/* Use a fragment to wrap multiple elements */}
-      <h1 className="text-xl">Home</h1>
-      <Link className={buttonVariants()} href="/admin">
-        Admin
-      </Link>
-    </>
+    <main className="flex flex-col items-center min-h-screen py-16 px-6 bg-white text-gray-900 font-sans">
+      <HeroSection />
+    </main>
   );
 }

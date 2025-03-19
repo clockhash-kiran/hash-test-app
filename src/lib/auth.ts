@@ -1,17 +1,25 @@
+// lib/auth.ts
+
 import CredentialsProvider from "next-auth/providers/credentials";
 import GitHubProvider from "next-auth/providers/github";
-import GoogleProvider from "next-auth/providers/google"; // Import GoogleProvider
+import GoogleProvider from "next-auth/providers/google"; 
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { compare } from "bcrypt";
 import { db } from "@/lib/db";
 import { NextAuthOptions } from "next-auth";
 import { v4 as uuidv4 } from 'uuid'; 
 import { sendVerificationEmail } from '@/lib/email';
-import { toast } from "sonner";
+
+interface UserData {
+    name?: string;
+    email?: string;
+    image?: string;
+}
+
 export const authOptions: NextAuthOptions = {
     adapter: {
         ...PrismaAdapter(db),
-        async createUser(data) {
+        async createUser(data: UserData) {
             const baseUsername = data.name?.toLowerCase().replace(/\s+/g, "-") || `user-${Date.now()}`;
     
             let finalUsername = baseUsername;

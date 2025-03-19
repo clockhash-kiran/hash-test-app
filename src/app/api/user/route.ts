@@ -60,7 +60,9 @@ export async function POST(req: Request) {
         await sendVerificationEmail(email, verificationToken);
 
         // Exclude password from response
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { password: _, ...sanitizedUser } = newUser;
+
 
         return NextResponse.json({ user: sanitizedUser, message: "User created successfully. Please check your email to verify your account." }, { status: 201 });
 
