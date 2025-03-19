@@ -23,7 +23,10 @@ import GoogleSignInButton from "../GoogleSignInButton";
 
 const formSchema = z.object({
   email: z.string().min(1, "Email is Required").email("Invalid Email"),
-  password: z.string().min(1, "Password is Required").min(8, "Password must have 8 Characters"),
+  password: z
+    .string()
+    .min(1, "Password is Required")
+    .min(8, "Password must have 8 Characters"),
 });
 
 const SignInForm = () => {
@@ -49,69 +52,86 @@ const SignInForm = () => {
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="w-full">
-        <div className="space-y-4">
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-gray-900">Email</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter your email"
-                    className="bg-white text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage className="text-red-500" />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-gray-900">Password</FormLabel>
-                <FormControl>
-                  <Input
-                    type="password"
-                    placeholder="Enter your password"
-                    className="bg-white text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage className="text-red-500" />
-              </FormItem>
-            )}
-          />
+    <div className="container max-w-md mx-auto px-4 sm:px-6 lg:px-8">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="w-full">
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-900">Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter your email"
+                      className="w-full bg-white text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none rounded-md p-2"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-red-500" />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-900">Password</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder="Enter your password"
+                      className="w-full bg-white text-gray-900 border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none rounded-md p-2"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-red-500" />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <Button className="w-full mt-6 bg-blue-600 text-white hover:bg-blue-500 focus:ring-2 focus:ring-blue-500 rounded-md p-2">
+            Sign In
+          </Button>
+        </form>
+
+        {/* OR Divider */}
+        <div className="flex items-center my-4">
+          <div className="flex-grow h-px bg-gray-300"></div>
+          <span className="px-2 text-gray-500 text-sm">or</span>
+          <div className="flex-grow h-px bg-gray-300"></div>
         </div>
 
-        <Button className="w-full mt-6 bg-blue-600 text-white hover:bg-blue-500 focus:ring-2 focus:ring-blue-500">
-          Sign In
-        </Button>
-      </form>
+        {/* Social Sign-In Buttons */}
+        <div className="flex flex-col gap-3">
+          <div onClick={() => signIn("github", { callbackUrl: "/" })}>
+            <GitHubSignInButton className="w-full py-2 px-4 bg-gray-900 text-white rounded-md text-center hover:bg-gray-800">
+              Sign In with GitHub
+            </GitHubSignInButton>
+          </div>
 
-      <div className="mx-auto my-4 flex w-full items-center justify-evenly before:mr-4 before:block before:h-px before:flex-grow before:bg-gray-300 after:ml-4 after:block after:h-px after:flex-grow after:bg-gray-300">
-        or
-      </div>
+          <div onClick={() => signIn("google", { callbackUrl: "/" })}>
+            <GoogleSignInButton className="w-full py-2 px-4 bg-white text-gray-900 border border-gray-300 rounded-md text-center hover:bg-gray-100">
+              Sign In with Google
+            </GoogleSignInButton>
+          </div>
+        </div>
 
-      <GitHubSignInButton>
-        Sign In with GitHub
-      </GitHubSignInButton>
-      <GoogleSignInButton>
-        Sign In with Google
-      </GoogleSignInButton>
-
-      <p className="text-center text-sm text-gray-600 mt-2">
-        If you don&apos;t have an account, please{" "}
-        <Link className="text-blue-500 md:font-bold hover:underline" href="/sign-up">
-          sign up
-        </Link>
-      </p>
-    </Form>
+        {/* Sign-Up Link */}
+        <p className="text-center text-sm text-gray-600 mt-4">
+          If you don&apos;t have an account, please{" "}
+          <Link
+            className="text-blue-500 font-medium hover:underline"
+            href="/sign-up"
+          >
+            sign up
+          </Link>
+        </p>
+      </Form>
+    </div>
   );
 };
 

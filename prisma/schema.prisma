@@ -7,29 +7,36 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  ADMIN
+  CLIENT
+}
+
 model User {
-  id                String    @id @default(uuid()) // Ensure UUID format
+  id                String    @id @default(uuid())
   name              String?
   email             String    @unique
   username          String    @unique
   avatarUrl         String?
   emailVerified     DateTime?
-  password          String? // Password is only for credentials-based login
-  provider          String? // e.g., "google", "github", "credentials"
-  providerAccountId String? // Provider-specific account ID (e.g., Google UID)
+  password          String?
+  provider          String?
+  providerAccountId String?
+  role              Role      @default(CLIENT) // Default role is CLIENT
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  accounts           Account[]           @relation("UserAccounts") // Define relation name
-  verificationTokens VerificationToken[] // Define the relation for verification tokens
+  accounts           Account[]
+  sessions           Session[] // Added relation for session management
+  verificationTokens VerificationToken[]
 }
 
 model Account {
   id                String  @id @default(uuid())
-  userId            String // Match User.id type (String)
-  provider          String // e.g., "google", "github", "credentials"
-  providerAccountId String // Unique ID from provider
-  type              String // e.g., "oauth", "credentials"
+  userId            String
+  provider          String
+  providerAccountId String
+  type              String
   access_token      String?
   expires_at        Int?
   refresh_token     String?
@@ -37,9 +44,20 @@ model Account {
   token_type        String?
   id_token          String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade, name: "UserAccounts")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([provider, providerAccountId]) // Ensure uniqueness
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id                 String   @id @default(uuid())
+  sessionToken       String   @unique
+  userId             String
+  expires           DateTime
+  refreshToken       String?  @unique
+  refreshTokenExpires DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -48,5 +66,5 @@ model VerificationToken {
   identifier String
   expires    DateTime
 
-  user User @relation(fields: [identifier], references: [email]) // Relation to User model, assuming identifier is email
+  user User @relation(fields: [identifier], references: [email])
 }

@@ -10,8 +10,9 @@ const Page = async () => {
             {session?.user?.name ? (
                 <>
                     <p>Welcome, {session.user.name}</p>
-                    {session?.user?.provider && (
-                        <p>Provider: {session.user.provider}</p>
+                    {session?.user?.role && (
+                        
+                        <p>Role: {session.user.role}</p>
                     )}
                 </>
             ) : (

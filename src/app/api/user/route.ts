@@ -1,3 +1,5 @@
+// app/api/user/route.ts
+
 import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { hash } from "bcrypt";
