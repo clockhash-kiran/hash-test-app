@@ -188,6 +188,7 @@ export const authOptions: NextAuthOptions = {
           token.accessTokenExpires = newAccessTokenExpires.getTime();
           delete token.error;
         } catch (error) {
+          console.error(error)
           return { ...token, error: "RefreshTokenError" };
         }
       }
