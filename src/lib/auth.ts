@@ -11,15 +11,16 @@ import { v4 as uuidv4 } from "uuid";
 import { User } from "next-auth";
 import { hash } from "bcrypt";
 import { randomBytes } from "crypto";
+import { cookies } from "next/headers";
+import { Role } from "@prisma/client";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db), // Using Prisma Adapter to store sessions in DB
   secret: process.env.NEXTAUTH_SECRET,
 
   session: {
-    strategy: "database", // Store sessions in the database instead of JWT
-    maxAge: 24 * 60 * 60, // 24 hours session expiration
-    updateAge: 2 * 60 * 60, // Refresh session after 2 hours of activity
+    strategy: "jwt", // Using JWT strategy with custom session handling
+    maxAge: 1 * 60 * 60, // 1 hour for the access token
   },
 
   pages: {
@@ -86,55 +87,142 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async session({ session, user }) {
-      if (!user) return session;
+    async jwt({ token, user }) {
+      // Initial sign in
+      if (user) {
+        // Store user data in the token
+        token.id = user.id;
+        token.role = user.role;
 
-      const existingSession = await db.session.findFirst({
-        where: { userId: user.id },
-      });
+        // Generate a refresh token
+        const refreshToken = randomBytes(32).toString("hex");
+        const hashedRefreshToken = await hash(refreshToken, 10);
 
-      const now = new Date();
+        // Store the session token and hashed refresh token in the database
+        const sessionToken = uuidv4();
+        token.sessionToken = sessionToken;
 
-      if (
-        existingSession?.refreshTokenExpires &&
-        now > existingSession.refreshTokenExpires
-      ) {
-        // Refresh token expired, log user out
-        await db.session.deleteMany({
-          where: { userId: user.id },
+        // Set expiration times
+        const accessTokenExpires = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
+        const refreshTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        // Store in the token for later use
+        token.accessTokenExpires = accessTokenExpires.getTime();
+        token.refreshToken = refreshToken; // Store the plain refresh token in the JWT (encrypted)
+
+        // Create the session in the database
+        await db.session.create({
+          data: {
+            userId: user.id,
+            sessionToken: sessionToken,
+            expires: accessTokenExpires,
+            refreshToken: hashedRefreshToken,
+            refreshTokenExpires: refreshTokenExpires,
+          },
         });
-        throw new Error("Session expired. Please log in again.");
       }
 
-      session.user.id = user.id;
-      session.user.role = user.role;
+      // Return the previous token if the access token has not expired
+      const accessTokenExpiry = token.accessTokenExpires as number;
+
+      // Check if access token has expired
+      if (Date.now() < accessTokenExpiry) {
+        return token;
+      }
+
+      // Access token has expired, try to refresh
+      if (token.refreshToken) {
+        try {
+          // Find the session using the sessionToken
+          const session = await db.session.findFirst({
+            where: {
+              sessionToken: token.sessionToken as string,
+              userId: token.id as string,
+            },
+          });
+
+          if (!session) {
+            return { ...token, error: "RefreshTokenError" };
+          }
+
+          // Check if refresh token is still valid
+          const now = new Date();
+          if (
+            session.refreshTokenExpires &&
+            now > session.refreshTokenExpires
+          ) {
+            // Refresh token expired, delete the session
+            await db.session.deleteMany({
+              where: { userId: token.id as string },
+            });
+            return { ...token, error: "RefreshTokenExpired" };
+          }
+
+          // Verify the refresh token
+          const refreshTokenValid = await compare(
+            token.refreshToken as string,
+            session.refreshToken as string
+          );
+
+          if (!refreshTokenValid) {
+            return { ...token, error: "RefreshTokenError" };
+          }
+
+          // Generate new tokens
+          const newSessionToken = uuidv4();
+          const newAccessTokenExpires = new Date(
+            Date.now() + 1 * 60 * 60 * 1000
+          ); // 1 hour
+
+          // Update the session in the database
+          await db.session.update({
+            where: { id: session.id },
+            data: {
+              sessionToken: newSessionToken,
+              expires: newAccessTokenExpires,
+            },
+          });
+
+          // Update token with new values
+          token.sessionToken = newSessionToken;
+          token.accessTokenExpires = newAccessTokenExpires.getTime();
+          delete token.error;
+        } catch (error) {
+          return { ...token, error: "RefreshTokenError" };
+        }
+      }
+
+      return token;
+    },
+
+    async session({ session, token }) {
+      if (!token) return session;
+
+      // Check for refresh token error
+      if (token.error) {
+        throw new Error(token.error as string);
+      }
+
+      // Update the session with user data
+      session.user.id = token.id as string;
+      session.user.role = token.role as Role;
       return session;
     },
   },
 
   events: {
-    async signIn({ user }) {
-      const refreshToken = randomBytes(32).toString("hex");
-      const hashedToken = await hash(refreshToken, 10);
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day expiry
+    async signOut({ token }) {
+      if (!token?.id) return;
 
-      await db.session.create({
-        data: {
-          userId: user.id,
-          sessionToken: uuidv4(),
-          expires: new Date(Date.now() + 60 * 60 * 1000), // 1 hour access token expiry
-          refreshToken: hashedToken,
-          refreshTokenExpires: expiresAt,
-        },
-      });
-    },
-
-    async signOut({ session }) {
-      if (!session?.user?.id) return;
-
+      // Delete all sessions for this user
       await db.session.deleteMany({
-        where: { userId: session.user.id },
+        where: { userId: token.id as string },
       });
+
+      // Clear cookies
+      (await cookies()).delete("next-auth.session-token");
+      (await cookies()).delete("next-auth.callback-url");
+      (await cookies()).delete("next-auth.csrf-token");
     },
   },
 
